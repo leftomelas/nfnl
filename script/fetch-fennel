@@ -9,3 +9,6 @@ chmod +x script/fennel.lua
 
 # Compiler / library
 curl https://fennel-lang.org/downloads/$FNL_NAME.lua >lua/nfnl/fennel.lua
+
+# Embedify the Fennel library by replacing `fennel.*` with `nfnl.fennel.*`.
+sd '"fennel\.' '"nfnl.fennel.' lua/nfnl/fennel.lua

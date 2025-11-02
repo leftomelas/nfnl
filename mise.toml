@@ -1,3 +1,6 @@
+[tools]
+sd = "latest"
+
 [tasks.fetch-fennel]
 run = "bash script/fetch-fennel"
 
