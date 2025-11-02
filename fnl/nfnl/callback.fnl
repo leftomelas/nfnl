@@ -1,4 +1,4 @@
-(local {: autoload} (require :nfnl.module))
+(local {: autoload : define} (require :nfnl.module))
 (local core (autoload :nfnl.core))
 (local str (autoload :nfnl.string))
 (local fs (autoload :nfnl.fs))
@@ -7,6 +7,9 @@
 (local config (autoload :nfnl.config))
 (local api (autoload :nfnl.api))
 (local notify (autoload :nfnl.notify))
+(local vim _G.vim)
+
+(local M (define :nfnl.callback))
 
 (fn fennel-buf-write-post-callback-fn [root-dir cfg]
   "Builds a function to be called on buf write. Adheres to the config passed
@@ -30,14 +33,14 @@
 
     nil))
 
-(fn supported-path? [file-path]
+(fn M.supported-path? [file-path]
   "Returns true if we can work with the given path. Right now we support a path if it's a string and it doesn't start with a protocol segment like fugitive://..."
   (or
     (when (core.string? file-path)
       (not (file-path:find "^[%w-]+:/")))
     false))
 
-(fn fennel-filetype-callback [ev]
+(fn M.fennel-filetype-callback [ev]
   "Called whenever we enter a Fennel file. It walks up the tree to find a
   .nfnl.fnl (which can contain configuration). If found, we initialise the
   compiler autocmd for the directory containing the .nfnl.fnl file.
@@ -46,7 +49,7 @@
   different .nfnl.fnl configuration, wonderful!"
 
   (let [file-path (fs.full-path (. ev :file))]
-    (when (supported-path? file-path)
+    (when (M.supported-path? file-path)
       (let [file-dir (fs.basename file-path)
             {: config : root-dir : cfg} (config.find-and-load file-dir)]
 
@@ -101,5 +104,4 @@
              :complete "file"
              :nargs "?"}))))))
 
-{: fennel-filetype-callback
- : supported-path?}
+M

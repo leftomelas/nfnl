@@ -1,6 +1,7 @@
 -- [nfnl] fnl/nfnl/callback.fnl
 local _local_1_ = require("nfnl.module")
 local autoload = _local_1_.autoload
+local define = _local_1_.define
 local core = autoload("nfnl.core")
 local str = autoload("nfnl.string")
 local fs = autoload("nfnl.fs")
@@ -9,6 +10,8 @@ local compile = autoload("nfnl.compile")
 local config = autoload("nfnl.config")
 local api = autoload("nfnl.api")
 local notify = autoload("nfnl.notify")
+local vim = _G.vim
+local M = define("nfnl.callback")
 local function fennel_buf_write_post_callback_fn(root_dir, cfg)
   local function _2_(ev)
     compile["into-file"]({["root-dir"] = root_dir, cfg = cfg, path = fs["full-path"](ev.file), source = nvim["get-buf-content-as-string"](ev.buf)})
@@ -20,7 +23,7 @@ local function fennel_buf_write_post_callback_fn(root_dir, cfg)
   end
   return _2_
 end
-local function supported_path_3f(file_path)
+M["supported-path?"] = function(file_path)
   local _4_
   if core["string?"](file_path) then
     _4_ = not file_path:find("^[%w-]+:/")
@@ -29,9 +32,9 @@ local function supported_path_3f(file_path)
   end
   return (_4_ or false)
 end
-local function fennel_filetype_callback(ev)
+M["fennel-filetype-callback"] = function(ev)
   local file_path = fs["full-path"](ev.file)
-  if supported_path_3f(file_path) then
+  if M["supported-path?"](file_path) then
     local file_dir = fs.basename(file_path)
     local _let_6_ = config["find-and-load"](file_dir)
     local config0 = _let_6_.config
@@ -73,4 +76,4 @@ local function fennel_filetype_callback(ev)
     return nil
   end
 end
-return {["fennel-filetype-callback"] = fennel_filetype_callback, ["supported-path?"] = supported_path_3f}
+return M
