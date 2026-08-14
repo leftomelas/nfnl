@@ -109,6 +109,13 @@
 
     (run-e2e-tests)))
 
+(fn trust-config [path]
+  "Trust a .nfnl.fnl the way a user does, by opening it and running :trust.
+  vim.secure.trust with a path only accepts action \"allow\" after Neovim 0.9,
+  and we still support 0.9."
+  (vim.cmd (.. "edit " (vim.fn.fnameescape path)))
+  (vim.cmd "trust"))
+
 (fn make-nested-project []
   "Builds an outer project with a second, independent project nested inside it.
   Both .nfnl.fnl files are trusted so nfnl will actually read them. Returns a
@@ -129,8 +136,8 @@
     (fs.mkdirp (fs.join-path [nested-dir "lua"]))
     (core.spit paths.outer-config "{}")
     (core.spit paths.nested-config "{}")
-    (vim.secure.trust {:action "allow" :path paths.outer-config})
-    (vim.secure.trust {:action "allow" :path paths.nested-config})
+    (trust-config paths.outer-config)
+    (trust-config paths.nested-config)
     paths))
 
 (describe

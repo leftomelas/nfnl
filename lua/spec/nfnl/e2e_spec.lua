@@ -92,6 +92,10 @@ local function _8_()
   return run_e2e_tests()
 end
 describe("e2e file compiling from outside project dir", _8_)
+local function trust_config(path)
+  vim.cmd(("edit " .. vim.fn.fnameescape(path)))
+  return vim.cmd("trust")
+end
 local function make_nested_project()
   local outer_dir = vim.fn.tempname()
   local nested_dir = fs["join-path"]({outer_dir, "pack", "nested"})
@@ -102,8 +106,8 @@ local function make_nested_project()
   fs.mkdirp(fs["join-path"]({nested_dir, "lua"}))
   core.spit(paths["outer-config"], "{}")
   core.spit(paths["nested-config"], "{}")
-  vim.secure.trust({action = "allow", path = paths["outer-config"]})
-  vim.secure.trust({action = "allow", path = paths["nested-config"]})
+  trust_config(paths["outer-config"])
+  trust_config(paths["nested-config"])
   return paths
 end
 local function _11_()
