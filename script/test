@@ -3,6 +3,11 @@
 XDG_CONFIG_HOME=$(pwd)/.test-config
 export XDG_CONFIG_HOME
 
+# XDG_STATE_HOME is where Neovim keeps its trust database. Without it the tests
+# write every temporary .nfnl.fnl they trust into the real one in ~/.local/state.
+XDG_STATE_HOME=$(pwd)/.test-config/state
+export XDG_STATE_HOME
+
 XDG_CONFIG_STATE=$(pwd)/.test-config/state
 export XDG_CONFIG_STATE
 

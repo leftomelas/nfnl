@@ -14,6 +14,50 @@
   "Find the nearest .nfnl.fnl file to the given directory."
   (fs.findfile config-file-name (.. dir ";")))
 
+(fn under? [parent dir]
+  "Is dir the parent directory itself, or somewhere beneath it?"
+  (let [prefix (.. parent (fs.path-sep))]
+    (or (= parent dir)
+        (= prefix (string.sub dir 1 (string.len prefix))))))
+
+(fn M.owner-filter [root-dir]
+  "Returns a predicate that takes an absolute path and returns true when the
+  nearest .nfnl.fnl to that path is the one in root-dir. A directory containing
+  its own .nfnl.fnl is a separate project, so this lets us leave its files alone
+  rather than compiling them with the wrong configuration. We only exclude a
+  path when we're confident it belongs to a project nested under us, anything
+  else is included. Memoised per directory so a batch operation searches the
+  file system once per directory rather than once per file."
+  (let [cache {}]
+    (fn [path]
+      (let [dir (fs.basename path)]
+        (when (core.nil? (. cache dir))
+          (tset cache dir
+                (let [config-dir (fs.basename (M.find dir))]
+                  (if
+                    ;; No config above this path at all, no other project to
+                    ;; defer to.
+                    (core.nil? config-dir) true
+
+                    ;; Ours.
+                    (= root-dir config-dir) true
+
+                    ;; A project nested under us that really does contain this
+                    ;; directory, it looks after its own files. Both halves
+                    ;; matter, see below.
+                    (and (under? root-dir config-dir)
+                         (under? config-dir dir)) false
+
+                    ;; Anything else means the search didn't do what it looks
+                    ;; like it did. M.find hands the directory to findfile as a
+                    ;; Vim path string, where a comma is a separator and spaces
+                    ;; need escaping, so such a directory silently resolves
+                    ;; against the cwd instead and can return a config that
+                    ;; isn't above us at all. Fail open, compiling a file we
+                    ;; didn't need to is far better than silently skipping one.
+                    true))))
+        (. cache dir)))))
+
 (fn M.path-dirs [{: rtp-patterns : runtimepath : base-dirs}]
   "Takes the current runtimepath and a sequential table of rtp-patterns. Those
   patterns are used to filter down all of the runtimepath directories. Returns

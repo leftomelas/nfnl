@@ -2,6 +2,8 @@
 (local assert (require :luassert.assert))
 (local config (require :nfnl.config))
 (local compile (require :nfnl.compile))
+(local core (require :nfnl.core))
+(local fs (require :nfnl.fs))
 
 (describe "macro-source?"
   (fn []
@@ -79,6 +81,46 @@
                :cfg (config.cfg-fn {} {:root-dir "/tmp/foo"})
                :batch? true
                :source "(+ 10 20)"}))))
+
+    (it "won't compile files belonging to a nested nfnl project"
+        (fn []
+          ;; Real directories, the nested project check searches the file system.
+          (let [root-dir (vim.fn.tempname)
+                nested-dir (fs.join-path [root-dir "nested"])
+                path (fs.join-path [nested-dir "foo.fnl"])]
+            (fs.mkdirp nested-dir)
+            (core.spit (fs.join-path [root-dir ".nfnl.fnl"]) "{}")
+            (core.spit (fs.join-path [nested-dir ".nfnl.fnl"]) "{}")
+            (assert.are.same
+              {:source-path path
+               :status "path-is-in-a-nested-nfnl-project"}
+              (compile.into-string
+                {: root-dir
+                 : path
+                 :cfg (config.cfg-fn {} {: root-dir})
+                 :batch? true
+                 :source "(+ 10 20)"})))))
+
+    (it "reports the pattern mismatch first for a nested file we'd skip anyway"
+        (fn []
+          ;; Pins the branch order. This path is both inside a nested project
+          ;; and outside :source-file-patterns, and the pattern check has to win.
+          (let [root-dir (vim.fn.tempname)
+                nested-dir (fs.join-path [root-dir "nested"])
+                path (fs.join-path [nested-dir "baz.fnl"])]
+            (fs.mkdirp nested-dir)
+            (core.spit (fs.join-path [root-dir ".nfnl.fnl"]) "{}")
+            (core.spit (fs.join-path [nested-dir ".nfnl.fnl"]) "{}")
+            (assert.are.same
+              {:source-path path
+               :status "path-is-not-in-source-file-patterns"}
+              (compile.into-string
+                {: root-dir
+                 : path
+                 :cfg (config.cfg-fn {:source-file-patterns ["bar.fnl"]}
+                                     {: root-dir})
+                 :batch? true
+                 :source "(+ 10 20)"})))))
 
     (it "returns compilation errors"
         (fn []

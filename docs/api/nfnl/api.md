@@ -28,7 +28,7 @@ Function signature:
 (compile-file {:dir dir :path path})
 ```
 
-Compiles a file into the matching Lua file. Returns the compilation result. Takes an optional `dir` key that changes the working directory.
+Compiles a file into the matching Lua file. Returns the compilation result. Takes an optional `dir` key that overrides where we look for the configuration, by default we look next to the file itself.
 
   Will do nothing if you execute it on a directory that doesn't contain an nfnl configuration file.
 
@@ -56,10 +56,10 @@ Just like :luafile, takes a Fennel file path (optional, defaults to '%', runs it
 Function signature:
 
 ```
-(find-orphans {:dir dir :passive? passive?})
+(find-orphans {:cfg cfg :config given-config :dir dir :passive? passive? :root-dir root-dir})
 ```
 
-Find orphan Lua files that were compiled from a Fennel file that no longer exists. Display them with notify. Set opts.passive? to true if you don't want it to tell you that there are no orphans.
+Find orphan Lua files that were compiled from a Fennel file that no longer exists. Display them with notify. Set opts.passive? to true if you don't want it to tell you that there are no orphans. Pass config, root-dir, and cfg to skip loading the config again.
 
 
 <!-- Generated with Fenneldoc v1.0.1

@@ -7,6 +7,7 @@
 - [`default`](#default)
 - [`find`](#find)
 - [`find-and-load`](#find-and-load)
+- [`owner-filter`](#owner-filter)
 - [`path-dirs`](#path-dirs)
 
 ## `cfg-fn`
@@ -73,6 +74,21 @@ Attempt to find and load the .nfnl.fnl config file relative to the given dir.
   Returns an empty table when there's issues or if there isn't a config file.
   If there's some valid config you'll get table containing config, cfg (fn) and
   root-dir back.
+
+## `owner-filter`
+Function signature:
+
+```
+(owner-filter root-dir)
+```
+
+Returns a predicate that takes an absolute path and returns true when the
+  nearest .nfnl.fnl to that path is the one in root-dir. A directory containing
+  its own .nfnl.fnl is a separate project, so this lets us leave its files alone
+  rather than compiling them with the wrong configuration. We only exclude a
+  path when we're confident it belongs to a project nested under us, anything
+  else is included. Memoised per directory so a batch operation searches the
+  file system once per directory rather than once per file.
 
 ## `path-dirs`
 Function signature:

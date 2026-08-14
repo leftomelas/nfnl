@@ -11,7 +11,7 @@ Function signature:
 (setup opts)
 ```
 
-Sets the vim.g.nfnl#... variables in a slightly more Lua friendly way.
+Deprecated. Set vim.g variables directly instead.
 
 
 <!-- Generated with Fenneldoc v1.0.1

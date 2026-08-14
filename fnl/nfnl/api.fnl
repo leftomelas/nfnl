@@ -10,11 +10,12 @@
 
 (local M (define :nfnl.api))
 
-(fn M.find-orphans [{: passive? : dir : config : root-dir : cfg}]
+(fn M.find-orphans [{: passive? : dir :config given-config : root-dir : cfg}]
   "Find orphan Lua files that were compiled from a Fennel file that no longer exists. Display them with notify. Set opts.passive? to true if you don't want it to tell you that there are no orphans. Pass config, root-dir, and cfg to skip loading the config again."
   (let [dir (or dir (vim.fn.getcwd))
-        {: config : root-dir : cfg} (if config {: config : root-dir : cfg}
-                                        (config.find-and-load dir))]
+        {: config : root-dir : cfg} (if given-config
+                                      {:config given-config : root-dir : cfg}
+                                      (config.find-and-load dir))]
     (if config
       (let [orphan-files (gc.find-orphan-lua-files {: root-dir : cfg})]
         (if (core.empty? orphan-files)
@@ -55,16 +56,26 @@
         []))))
 
 (fn M.compile-file [{: path : dir}]
-  "Compiles a file into the matching Lua file. Returns the compilation result. Takes an optional `dir` key that changes the working directory.
+  "Compiles a file into the matching Lua file. Returns the compilation result. Takes an optional `dir` key that overrides where we look for the configuration, by default we look next to the file itself.
 
   Will do nothing if you execute it on a directory that doesn't contain an nfnl configuration file.
 
   Also displays all results via the notify system."
-  (let [dir (or dir (vim.fn.getcwd))
-        {: config : root-dir : cfg} (config.find-and-load dir)]
+  (let [expanded (vim.fn.expand (or path "%"))
+        path (fs.absolute-path expanded)
+
+        ;; Look for the configuration next to the file rather than in the
+        ;; working directory, so a file inside a nested project is compiled by
+        ;; that project just as it would be on write. With no file to go on we
+        ;; have nothing better than the working directory.
+        {: config : root-dir : cfg}
+        (config.find-and-load
+          (or dir
+              (if (str.blank? expanded)
+                (vim.fn.getcwd)
+                (fs.basename path))))]
     (if config
-      (let [path (fs.absolute-path (vim.fn.expand (or path "%")))
-            result (compile.into-file
+      (let [result (compile.into-file
                      {: root-dir
                       : cfg
                       : path

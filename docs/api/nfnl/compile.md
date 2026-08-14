@@ -5,12 +5,13 @@
 - [`all-files`](#all-files)
 - [`into-file`](#into-file)
 - [`into-string`](#into-string)
+- [`macro-source?`](#macro-source)
 
 ## `all-files`
 Function signature:
 
 ```
-(all-files {:cfg cfg :root-dir root-dir &as opts})
+(all-files {:cfg cfg :root-dir root-dir})
 ```
 
 **Undocumented**
@@ -29,6 +30,15 @@ Function signature:
 
 ```
 (into-string {:batch? batch? :cfg cfg :path path :root-dir root-dir :source source &as opts})
+```
+
+**Undocumented**
+
+## `macro-source?`
+Function signature:
+
+```
+(macro-source? {:path path :source source})
 ```
 
 **Undocumented**

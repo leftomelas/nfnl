@@ -20,17 +20,27 @@
   (or (and (core.string? source) (string.find source "%s*;+%s*%[nfnl%-macro%]") true)
       (and (core.string? path) path (str.ends-with? path ".fnlm"))))
 
-(fn valid-source-files [glob-fn {: root-dir : cfg}]
-  "Return a list of all files we're allowed to compile. These are found by
-  performing fs.relglob calls against each :source-file-patterns value from the
-  configuration."
-  (core.mapcat #(glob-fn root-dir $) (cfg [:source-file-patterns])))
+(fn valid-source-files [glob-fn {: root-dir : cfg : owner?}]
+  "Return the absolute paths of every file we're allowed to compile. Found by
+  performing glob calls against each :source-file-patterns value from the
+  configuration, then dropping anything that belongs to a nested nfnl project."
+  (->> (core.mapcat #(glob-fn root-dir $) (cfg [:source-file-patterns]))
+       (core.map #(fs.join-path [root-dir $]))
+       (core.filter owner?)))
 
 (fn valid-source-file? [path {: root-dir : cfg }]
   "Return whether we're allowed to compile the given file. This is determined by
   matching the given absolute path against each :source-file-patterns value from
   the configuration."
   (core.some #(fs.glob-matches? root-dir $ path) (cfg [:source-file-patterns])))
+
+(fn nested-project-file? [path {: root-dir : owner?}]
+  "Return whether the given absolute path belongs to a nested nfnl project, a
+  subdirectory with its own .nfnl.fnl file. Those files are that project's
+  responsibility, compiling them here would use the wrong configuration.
+  Batch callers pass an owner? predicate through so its memo is shared across
+  every file, one off callers let us build a throwaway one."
+  (not ((or owner? (config.owner-filter root-dir)) path)))
 
 (fn M.into-string [{: root-dir : path : cfg : source : batch? &as opts}]
   (let [macro? (M.macro-source? opts)]
@@ -50,6 +60,10 @@
 
       (not (valid-source-file? path opts))
       {:status :path-is-not-in-source-file-patterns
+       :source-path path}
+
+      (nested-project-file? path opts)
+      {:status :path-is-in-a-nested-nfnl-project
        :source-path path}
 
       (let [rel-file-name (path:sub (+ 2 (root-dir:len)))
@@ -106,16 +120,17 @@
          :source-path path
          : destination-path}))))
 
-(fn M.all-files [{: root-dir : cfg &as opts}]
-  (->> (valid-source-files fs.relglob opts)
-       (core.map #(fs.join-path [root-dir $]))
-       (core.map
-         (fn [path]
-           (M.into-file
-             {: root-dir
-              : path
-              : cfg
-              :source (core.slurp path)
-              :batch? true})))))
+(fn M.all-files [{: root-dir : cfg}]
+  (let [owner? (config.owner-filter root-dir)]
+    (->> (valid-source-files fs.relglob {: root-dir : cfg : owner?})
+         (core.map
+           (fn [path]
+             (M.into-file
+               {: root-dir
+                : path
+                : cfg
+                : owner?
+                :source (core.slurp path)
+                :batch? true}))))))
 
 M

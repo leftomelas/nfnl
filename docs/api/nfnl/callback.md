@@ -2,22 +2,19 @@
 
 **Table of contents**
 
-- [`fennel-filetype-callback`](#fennel-filetype-callback)
+- [`setup-buffer`](#setup-buffer)
 - [`supported-path?`](#supported-path)
 
-## `fennel-filetype-callback`
+## `setup-buffer`
 Function signature:
 
 ```
-(fennel-filetype-callback ev)
+(setup-buffer ev)
 ```
 
-Called whenever we enter a Fennel file. It walks up the tree to find a
-  .nfnl.fnl (which can contain configuration). If found, we initialise the
-  compiler autocmd for the directory containing the .nfnl.fnl file.
-
-  This allows us to edit multiple projects in different directories with
-  different .nfnl.fnl configuration, wonderful!
+Called by ftplugin/fennel.fnl for every fennel buffer. Registers the
+  BufWritePost autocmd and all :Nfnl* buffer-local commands. Trust is checked
+  at write time, not here.
 
 ## `supported-path?`
 Function signature:

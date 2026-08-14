@@ -130,6 +130,15 @@ could use this `.nfnl.fnl` file instead.
 {:source-file-patterns ["fnl/**/*.fnl"]}
 ```
 
+Note that you rarely need `source-file-patterns` to exclude a subdirectory.
+nfnl finds your project by walking *up* from a file to the nearest `.nfnl.fnl`,
+and it will not walk *down* past one: any directory containing its own
+`.nfnl.fnl` is a separate project. Commands like `:NfnlCompileAllFiles`,
+`:NfnlFindOrphans` and `:NfnlDeleteOrphans` skip those directories entirely and
+leave them to their own configuration. This means you can keep independent
+projects inside a larger one. A `pack/` directory of your own plugins within
+your Neovim configuration, for example, just by giving each one a `.nfnl.fnl`.
+
 And since this is a Fennel file that's executed within Neovim you can actually
 load nfnl's modules to access things like the default config values.
 
