@@ -69,7 +69,7 @@
     (if (or (= :linux os)
             (= :osx os)
             (= :bsd os)
-            (and (= 1 (vim.fn.exists "+shellshash"))
+            (and (= 1 (vim.fn.exists "+shellslash"))
                  vim.o.shellslash))
       "/"
       "\\")))
