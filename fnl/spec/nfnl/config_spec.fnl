@@ -74,6 +74,36 @@
                  :base-dirs ["/foo/baz/my-proj" "/foo/bar/nfnl"]})))))))
 
 (describe
+  "find"
+  (fn []
+    (local root-dir (vim.fn.tempname))
+    (local config-path (fs.join-path [root-dir ".nfnl.fnl"]))
+    (local plain-dir (fs.join-path [root-dir "fnl" "plain"]))
+    (local spacey-dir (fs.join-path [root-dir "fnl" "my dir"]))
+    (local comma-dir (fs.join-path [root-dir "fnl" "comma,dir"]))
+
+    (fs.mkdirp plain-dir)
+    (fs.mkdirp spacey-dir)
+    (fs.mkdirp comma-dir)
+    (core.spit config-path "{}")
+
+    (it "finds the config above a directory"
+        (fn []
+          (assert.equals config-path (config.find plain-dir))))
+
+    (it "finds the config above a directory containing a space"
+        (fn []
+          (assert.equals config-path (config.find spacey-dir))))
+
+    (it "finds the config above a directory containing a comma"
+        (fn []
+          (assert.equals config-path (config.find comma-dir))))
+
+    (it "returns nil when there's no config above the directory"
+        (fn []
+          (assert.is_nil (config.find "/some/made/up/dir"))))))
+
+(describe
   "owner-filter"
   (fn []
     ;; A project containing a nested project, on a real temp directory since
@@ -120,27 +150,34 @@
             ((config.owner-filter "/some/made/up/dir")
              "/some/made/up/dir/foo.fnl"))))
 
-    (it "includes files under a directory Vim's path syntax can't search"
+    (it "includes files under a directory with a space in its name"
         (fn []
-          ;; A space (or a comma) makes findfile resolve against the cwd instead
-          ;; of walking up from the directory we asked about. We must not read
-          ;; that as "belongs to someone else" and skip the file.
           (assert.is_true
             ((config.owner-filter root-dir)
              (fs.join-path [spacey-dir "foo.fnl"])))))
 
     (it "includes those files even when the cwd is inside a nested project"
         (fn []
-          ;; The nastiest version of the above. findfile resolves against the
-          ;; cwd, so it hands back the nested project's config, which really is
-          ;; under root-dir and so looks like a legitimate exclusion. It isn't,
-          ;; that config is nowhere near the directory we asked about.
+          ;; A regression guard. Any upward search that resolves against the cwd
+          ;; rather than the directory we asked about hands back the nested
+          ;; project's config, which really is under root-dir and so looks like a
+          ;; legitimate exclusion. It isn't, that config is nowhere near this
+          ;; file, and treating it as one would silently stop compiling.
           (let [initial-cwd (vim.fn.getcwd)]
             (vim.api.nvim_set_current_dir nested-dir)
             (let [owner? (config.owner-filter root-dir)
                   result (owner? (fs.join-path [spacey-dir "foo.fnl"]))]
               (vim.api.nvim_set_current_dir initial-cwd)
               (assert.is_true result)))))
+
+    (it "includes files when root-dir isn't a real project root"
+        (fn []
+          ;; config.default lets you pass any root-dir, so it isn't always a
+          ;; directory containing a .nfnl.fnl. The config we find then belongs
+          ;; neither to us nor to a project beneath us, so we fail open.
+          (assert.is_true
+            ((config.owner-filter (fs.join-path [root-dir "not-a-project"]))
+             (fs.join-path [plain-dir "foo.fnl"])))))
 
     (it "gives the same answer for repeated calls on one directory"
         (fn []

@@ -11,7 +11,7 @@ local vim = _G.vim
 local M = define("nfnl.config")
 local config_file_name = ".nfnl.fnl"
 M.find = function(dir)
-  return fs.findfile(config_file_name, (dir .. ";"))
+  return fs["full-path"](core.first(vim.fs.find(config_file_name, {path = dir, upward = true, type = "file"})))
 end
 local function under_3f(parent, dir)
   local prefix = (parent .. fs["path-sep"]())

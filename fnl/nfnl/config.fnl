@@ -11,8 +11,14 @@
 (local config-file-name ".nfnl.fnl")
 
 (fn M.find [dir]
-  "Find the nearest .nfnl.fnl file to the given directory."
-  (fs.findfile config-file-name (.. dir ";")))
+  "Find the nearest .nfnl.fnl file to the given directory, searching upwards.
+  Returns nil when there isn't one. We use vim.fs.find rather than findfile
+  because findfile takes a Vim 'path' string, in which a comma separates entries
+  and spaces have to be escaped, so directories containing either would silently
+  be searched for relative to the current working directory instead."
+  (-> (vim.fs.find config-file-name {:path dir :upward true :type :file})
+      (core.first)
+      (fs.full-path)))
 
 (fn under? [parent dir]
   "Is dir the parent directory itself, or somewhere beneath it?"
@@ -48,13 +54,11 @@
                     (and (under? root-dir config-dir)
                          (under? config-dir dir)) false
 
-                    ;; Anything else means the search didn't do what it looks
-                    ;; like it did. M.find hands the directory to findfile as a
-                    ;; Vim path string, where a comma is a separator and spaces
-                    ;; need escaping, so such a directory silently resolves
-                    ;; against the cwd instead and can return a config that
-                    ;; isn't above us at all. Fail open, compiling a file we
-                    ;; didn't need to is far better than silently skipping one.
+                    ;; A config that's neither ours nor above this directory,
+                    ;; which happens when root-dir isn't a real project root.
+                    ;; config.default lets you pass any root-dir you like. Fail
+                    ;; open, compiling a file we didn't need to is far better
+                    ;; than silently skipping one.
                     true))))
         (. cache dir)))))
 
