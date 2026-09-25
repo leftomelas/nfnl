@@ -6,11 +6,11 @@
 
 (local M (define :nfnl.gc))
 
-(fn orphan? [root-dir path]
+(fn orphan? [root-dir path cfg]
   "Was the Lua file at the given absolute path compiled by nfnl from a Fennel
   file that no longer exists? The header records the source relative to
   root-dir, so that's what we resolve it against."
-  (let [line (fs.read-first-line path)
+  (let [line (header.read path (cfg [:header-search-lines]))
         source-path (header.source-path line)]
     (and (header.tagged? line)
          (not (fs.exists?
@@ -50,7 +50,7 @@
          (core.filter
            (fn [path]
              (and (owner? path)
-                  (orphan? root-dir path)))))))
+                  (orphan? root-dir path cfg)))))))
 
 (comment
   (local config (require :nfnl.config))

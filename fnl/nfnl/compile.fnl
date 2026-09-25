@@ -9,13 +9,6 @@
 
 (local M (define :nfnl.compile))
 
-(fn safe-target? [path]
-  "Reads the given file and checks if it contains our header marker on the
-  first line. Returns true if it contains the marker, we're allowed to
-  overwrite this file."
-  (let [line (fs.read-first-line path)]
-    (or (not line) (header.tagged? line))))
-
 (fn M.macro-source? [{: source : path}]
   (or (and (core.string? source) (string.find source "%s*;+%s*%[nfnl%-macro%]") true)
       (and (core.string? path) path (str.ends-with? path ".fnlm"))))
@@ -99,16 +92,21 @@
   (let [fnl-path->lua-path (cfg [:fnl-path->lua-path])
         destination-path (fnl-path->lua-path path)
         {: status : source-path : result &as res}
-        (M.into-string opts)]
+        (M.into-string opts)
+        (line prefix) (when (and (= :ok status) (cfg [:header-comment]))
+                        (header.read destination-path (cfg [:header-search-lines])))]
     (if
       (not= :ok status)
       res
 
-      (or (safe-target? destination-path)
+      (or (not line) (header.tagged? line)
           (not (cfg [:header-comment])))
       (do
         (fs.mkdirp (fs.basename destination-path))
-        (core.spit destination-path result)
+        (core.spit destination-path
+                   (if (and prefix (cfg [:header-comment]))
+                     (.. prefix result)
+                     result))
         {:status :ok
          : source-path
          : destination-path})

@@ -2,9 +2,22 @@
 
 **Table of contents**
 
+- [`read`](#read)
 - [`source-path`](#source-path)
 - [`tagged?`](#tagged)
 - [`with-header`](#with-header)
+
+## `read`
+Function signature:
+
+```
+(read path max-lines)
+```
+
+Search the first max-lines lines for an nfnl header. Returns the header and
+  all preceding lines as a prefix (including their newlines). If no header is
+  found, returns the first line, or nil for an empty or missing file.
+  max-lines must be a positive integer.
 
 ## `source-path`
 Function signature:

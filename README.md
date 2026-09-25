@@ -73,8 +73,15 @@ fine!) will default to these values that should work fine for most people.
 
  ;; When false, will not write the protective `-- [nfnl] ...` header to the resulting .lua files.
  ;; It will also prevent nfnl from checking for this header before overwriting .lua files.
- ;; Intended for users who wish to write shebang comments at the top of their .lua for easier execution.
+ ;; When true, add a shebang (e.g. #!/usr/bin/lua) above the generated header once
+ ;; and nfnl will preserve everything before the header when recompiling, as long as the
+ ;; header is within :header-search-lines below.
  :header-comment true
+
+ ;; Look for the header within this many lines at the start of existing Lua files.
+ ;; Must be a positive integer. Used for overwrite protection and orphan detection.
+ ;; Set to 1 to require the header on the first line.
+ :header-search-lines 5
 
  :orphan-detection
  {;; Automatically invoke :NfnlFindOrphans whenever you write to a .fnl file. This acts as a passive

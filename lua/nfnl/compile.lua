@@ -10,10 +10,6 @@ local notify = autoload("nfnl.notify")
 local config = autoload("nfnl.config")
 local header = autoload("nfnl.header")
 local M = define("nfnl.compile")
-local function safe_target_3f(path)
-  local line = fs["read-first-line"](path)
-  return (not line or header["tagged?"](line))
-end
 M["macro-source?"] = function(_2_)
   local source = _2_.source
   local path = _2_.path
@@ -106,11 +102,24 @@ M["into-file"] = function(_16_)
   local source_path = _let_17_["source-path"]
   local result = _let_17_.result
   local res = _let_17_
+  local line, prefix
+  if (("ok" == status) and cfg({"header-comment"})) then
+    line, prefix = header.read(destination_path, cfg({"header-search-lines"}))
+  else
+    line, prefix = nil
+  end
   if ("ok" ~= status) then
     return res
-  elseif (safe_target_3f(destination_path) or not cfg({"header-comment"})) then
+  elseif (not line or header["tagged?"](line) or not cfg({"header-comment"})) then
     fs.mkdirp(fs.basename(destination_path))
-    core.spit(destination_path, result)
+    local function _19_()
+      if (prefix and cfg({"header-comment"})) then
+        return (prefix .. result)
+      else
+        return result
+      end
+    end
+    core.spit(destination_path, _19_())
     return {status = "ok", ["source-path"] = source_path, ["destination-path"] = destination_path}
   else
     if not batch_3f then
@@ -120,13 +129,13 @@ M["into-file"] = function(_16_)
     return {status = "destination-exists", ["source-path"] = path, ["destination-path"] = destination_path}
   end
 end
-M["all-files"] = function(_20_)
-  local root_dir = _20_["root-dir"]
-  local cfg = _20_.cfg
+M["all-files"] = function(_22_)
+  local root_dir = _22_["root-dir"]
+  local cfg = _22_.cfg
   local owner_3f = config["owner-filter"](root_dir)
-  local function _21_(path)
+  local function _23_(path)
     return M["into-file"]({["root-dir"] = root_dir, path = path, cfg = cfg, ["owner?"] = owner_3f, source = core.slurp(path), ["batch?"] = true})
   end
-  return core.map(_21_, valid_source_files(fs.relglob, {["root-dir"] = root_dir, cfg = cfg, ["owner?"] = owner_3f}))
+  return core.map(_23_, valid_source_files(fs.relglob, {["root-dir"] = root_dir, cfg = cfg, ["owner?"] = owner_3f}))
 end
 return M

@@ -115,6 +115,7 @@
 
     {:verbose false
      :header-comment true
+     :header-search-lines 5
      :compiler-options {:error-pinpoint false}
      :orphan-detection {:auto? true
                         :ignore-patterns []}

@@ -67,4 +67,59 @@ local function _6_()
   end
   return it("returns compilation errors", _13_)
 end
-return describe("into-string", _6_)
+describe("into-string", _6_)
+local function _14_()
+  for _, example in ipairs({{name = "creates missing targets"}, {name = "overwrites empty targets", existing = ""}, {name = "replaces a first-line header", existing = "-- [nfnl] bar.fnl\nreturn 0\n"}, {name = "preserves a shebang above the header", existing = "#!/usr/bin/lua\n-- [nfnl] bar.fnl\nreturn 0\n", prefix = "#!/usr/bin/lua\n"}, {name = "preserves a blank line above the header", existing = "\n-- [nfnl] bar.fnl\nreturn 0\n", prefix = "\n"}, {name = "preserves a comment above the header", existing = "-- Custom comment\n-- [nfnl] bar.fnl\nreturn 0\n", prefix = "-- Custom comment\n"}, {name = "protects handwritten Lua", existing = "return 0\n", ["protected?"] = true}, {name = "protects handwritten scripts with a shebang", existing = "#!/usr/bin/lua\nreturn 0\n", ["protected?"] = true}, {name = "preserves all four lines before a fifth-line header", existing = "#!/usr/bin/lua\n-- One\n\n-- Two\n-- [nfnl] bar.fnl\nreturn 0\n", prefix = "#!/usr/bin/lua\n-- One\n\n-- Two\n"}, {name = "does not search beyond the default five lines", existing = "-- 1\n-- 2\n-- 3\n-- 4\n-- 5\n-- [nfnl] bar.fnl\nreturn 0\n", ["protected?"] = true}, {name = "supports a larger search limit", existing = "-- 1\n-- 2\n-- 3\n-- 4\n-- 5\n-- [nfnl] bar.fnl\nreturn 0\n", prefix = "-- 1\n-- 2\n-- 3\n-- 4\n-- 5\n", ["header-search-lines"] = 6}, {name = "supports requiring a first-line header", existing = "#!/usr/bin/lua\n-- [nfnl] bar.fnl\nreturn 0\n", ["header-search-lines"] = 1, ["protected?"] = true}, {name = "does not search beyond a configured second line", ["header-search-lines"] = 2, existing = "-- One\n-- Two\n-- [nfnl] bar.fnl\nreturn 0\n", ["protected?"] = true}, {name = "keeps header-comment false behaviour", existing = "#!/usr/bin/lua\n-- [nfnl] bar.fnl\nreturn 0\n", ["header-comment"] = false}}) do
+    local function _15_()
+      local root_dir = vim.fn.tempname()
+      local path = fs["join-path"]({root_dir, "bar.fnl"})
+      local destination = fs["join-path"]({root_dir, "bar.lua"})
+      local opts = {["root-dir"] = root_dir, path = path, ["batch?"] = true, source = "(+ 10 20)", cfg = config["cfg-fn"]({["header-comment"] = example["header-comment"], ["header-search-lines"] = example["header-search-lines"]}, {["root-dir"] = root_dir})}
+      fs.mkdirp(root_dir)
+      if example.existing then
+        core.spit(destination, example.existing)
+      else
+      end
+      for _0 = 1, 2 do
+        local _17_
+        if example["protected?"] then
+          _17_ = "destination-exists"
+        else
+          _17_ = "ok"
+        end
+        assert.are.equal(_17_, compile["into-file"](opts).status)
+        local _19_
+        if example["protected?"] then
+          _19_ = example.existing
+        elseif (false == example["header-comment"]) then
+          _19_ = "return (10 + 20)\n"
+        else
+          _19_ = ((example.prefix or "") .. "-- [nfnl] bar.fnl\nreturn (10 + 20)\n")
+        end
+        assert.are.equal(_19_, core.slurp(destination))
+      end
+      return nil
+    end
+    it(example.name, _15_)
+  end
+  return nil
+end
+describe("into-file", _14_)
+local function _21_()
+  local function _22_()
+    local gc = require("nfnl.gc")
+    local root_dir = vim.fn.tempname()
+    local source = fs["join-path"]({root_dir, "bar.fnl"})
+    local destination = fs["join-path"]({root_dir, "bar.lua"})
+    local opts = {["root-dir"] = root_dir, cfg = config["cfg-fn"]({}, {["root-dir"] = root_dir})}
+    fs.mkdirp(root_dir)
+    core.spit(source, "(+ 10 20)")
+    core.spit(destination, "#!/usr/bin/lua\n-- One\n\n-- Two\n-- [nfnl] bar.fnl\nreturn 0\n")
+    assert.are.same({}, gc["find-orphan-lua-files"](opts))
+    os.remove(source)
+    assert.are.same({destination}, gc["find-orphan-lua-files"](opts))
+    return assert.are.same({}, gc["find-orphan-lua-files"]({["root-dir"] = root_dir, cfg = config["cfg-fn"]({["header-search-lines"] = 4}, {["root-dir"] = root_dir})}))
+  end
+  return it("only reports the script when its source is missing", _22_)
+end
+return describe("orphan detection with a fifth-line header", _21_)

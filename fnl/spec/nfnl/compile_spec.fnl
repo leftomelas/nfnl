@@ -134,3 +134,82 @@
                :cfg (config.cfg-fn {} {:root-dir "/tmp/foo"})
                :batch? true
                :source "10 / 20"}))))))
+
+(describe "into-file"
+  (fn []
+    (each [_ example (ipairs
+                    [{:name "creates missing targets"}
+                     {:name "overwrites empty targets" :existing ""}
+                     {:name "replaces a first-line header"
+                      :existing "-- [nfnl] bar.fnl\nreturn 0\n"}
+                     {:name "preserves a shebang above the header"
+                      :existing "#!/usr/bin/lua\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :prefix "#!/usr/bin/lua\n"}
+                     {:name "preserves a blank line above the header"
+                      :existing "\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :prefix "\n"}
+                     {:name "preserves a comment above the header"
+                      :existing "-- Custom comment\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :prefix "-- Custom comment\n"}
+                     {:name "protects handwritten Lua"
+                      :existing "return 0\n" :protected? true}
+                     {:name "protects handwritten scripts with a shebang"
+                      :existing "#!/usr/bin/lua\nreturn 0\n" :protected? true}
+                     {:name "preserves all four lines before a fifth-line header"
+                      :existing "#!/usr/bin/lua\n-- One\n\n-- Two\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :prefix "#!/usr/bin/lua\n-- One\n\n-- Two\n"}
+                     {:name "does not search beyond the default five lines"
+                      :existing "-- 1\n-- 2\n-- 3\n-- 4\n-- 5\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :protected? true}
+                     {:name "supports a larger search limit"
+                      :existing "-- 1\n-- 2\n-- 3\n-- 4\n-- 5\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :prefix "-- 1\n-- 2\n-- 3\n-- 4\n-- 5\n"
+                      :header-search-lines 6}
+                     {:name "supports requiring a first-line header"
+                      :existing "#!/usr/bin/lua\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :header-search-lines 1 :protected? true}
+                     {:name "does not search beyond a configured second line"
+                      :header-search-lines 2
+                      :existing "-- One\n-- Two\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :protected? true}
+                     {:name "keeps header-comment false behaviour"
+                      :existing "#!/usr/bin/lua\n-- [nfnl] bar.fnl\nreturn 0\n"
+                      :header-comment false}])]
+      (it example.name
+        (fn []
+          (let [root-dir (vim.fn.tempname)
+                path (fs.join-path [root-dir "bar.fnl"])
+                destination (fs.join-path [root-dir "bar.lua"])
+                opts {: root-dir : path :batch? true :source "(+ 10 20)"
+                      :cfg (config.cfg-fn {:header-comment example.header-comment
+                                           :header-search-lines example.header-search-lines} {: root-dir})}]
+            (fs.mkdirp root-dir)
+            (when example.existing (core.spit destination example.existing))
+            ;; A second compilation must not duplicate or lose the prefix.
+            (for [_ 1 2]
+              (assert.are.equal (if example.protected? :destination-exists :ok)
+                                (. (compile.into-file opts) :status))
+              (assert.are.equal
+                (if example.protected? example.existing
+                    (= false example.header-comment) "return (10 + 20)\n"
+                    (.. (or example.prefix "") "-- [nfnl] bar.fnl\nreturn (10 + 20)\n"))
+                (core.slurp destination)))))))))
+
+(describe "orphan detection with a fifth-line header"
+  (fn []
+    (it "only reports the script when its source is missing"
+      (fn []
+        (let [gc (require :nfnl.gc)
+              root-dir (vim.fn.tempname)
+              source (fs.join-path [root-dir "bar.fnl"])
+              destination (fs.join-path [root-dir "bar.lua"])
+              opts {: root-dir :cfg (config.cfg-fn {} {: root-dir})}]
+          (fs.mkdirp root-dir)
+          (core.spit source "(+ 10 20)")
+          (core.spit destination "#!/usr/bin/lua\n-- One\n\n-- Two\n-- [nfnl] bar.fnl\nreturn 0\n")
+          (assert.are.same [] (gc.find-orphan-lua-files opts))
+          (os.remove source)
+          (assert.are.same [destination] (gc.find-orphan-lua-files opts))
+          (assert.are.same []
+            (gc.find-orphan-lua-files
+              {: root-dir :cfg (config.cfg-fn {:header-search-lines 4} {: root-dir})})))))))
